@@ -1,4 +1,5 @@
 ﻿using Entities;
+using QueryProcessor.Parser;
 using StoreDataManager;
 using System;
 using System.Collections.Generic;
@@ -10,10 +11,32 @@ namespace QueryProcessor.Operations
 {
     internal class Select
     {
-        public OperationStatus Execute()
+        internal OperationStatus Execute(ParsedQuery parsedQuery)
         {
-            // This is only doing the query but not returning results.
-            return Store.GetInstance().Select();
+            // Asegúrate de que parsedQuery contenga el nombre de la base de datos
+            if (string.IsNullOrEmpty(parsedQuery.DatabaseName) || string.IsNullOrEmpty(parsedQuery.TableName))
+            {
+                return OperationStatus.Error;
+            }
+
+            // Verificar si hay columnas solicitadas, de lo contrario pasar null
+            var requestedColumns = parsedQuery.Columns?.Keys.ToList();
+
+            // Llamar al método Select de Store con el nombre de la base de datos, nombre de la tabla y las columnas opcionales
+            var results = Store.GetInstance().Select(parsedQuery.DatabaseName, parsedQuery.TableName, requestedColumns);
+
+            // Procesar los resultados (esto es un ejemplo, puedes adaptarlo según el formato que necesites)
+            foreach (var row in results)
+            {
+                foreach (var column in row)
+                {
+                    Console.WriteLine($"{column.Key}: {column.Value}");
+                }
+                Console.WriteLine("----------");
+            }
+
+            return OperationStatus.Success;
         }
     }
 }
+

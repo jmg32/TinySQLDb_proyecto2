@@ -6,9 +6,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\StoreDataManager\StoreDataManager.csproj" />
-    <ProjectReference Include="..\SystemCatalog\SystemCatalog.csproj" />
-  </ItemGroup>
-
 </Project>

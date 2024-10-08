@@ -33,7 +33,12 @@ function Receive-Message {
     $stream = New-Object System.Net.Sockets.NetworkStream($client)
     $reader = New-Object System.IO.StreamReader($stream)
     try {
-        return $null -ne $reader.ReadLine ? $reader.ReadLine() : ""
+        $line = $reader.ReadLine()
+        if ($null -ne $line) {
+            return $line
+        } else {
+            return ""
+        }
     }
     finally {
         $reader.Close()
