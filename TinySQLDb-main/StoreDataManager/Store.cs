@@ -87,7 +87,7 @@ namespace StoreDataManager
                 using (FileStream stream = File.Open(tablePath, FileMode.Open)) // Abrir el archivo binario de la tabla.
                 using (BinaryReader reader = new BinaryReader(stream))
                 {
-                    // Leer el esquema de la tabla (asumiendo que el esquema está al inicio del archivo)
+                    // Leer el esquema de la tabla (asumiendo que el esquema estï¿½ al inicio del archivo)
                     List<ColumnDefinition> tableSchema = new List<ColumnDefinition>();
                     while (stream.Position < stream.Length)
                     {
@@ -95,7 +95,7 @@ namespace StoreDataManager
                         string columnType = reader.ReadString();
                         tableSchema.Add(new ColumnDefinition(columnName, columnType));
 
-                        // Salir del bucle cuando todas las columnas del esquema se hayan leído.
+                        // Salir del bucle cuando todas las columnas del esquema se hayan leï¿½do.
                         if (columnName == null || columnType == null) break;
                     }
 
@@ -132,7 +132,7 @@ namespace StoreDataManager
                         }
                         else
                         {
-                            // Si no se solicitaron columnas específicas, agregar la fila completa
+                            // Si no se solicitaron columnas especï¿½ficas, agregar la fila completa
                             results.Add(row);
                         }
                     }
@@ -143,7 +143,7 @@ namespace StoreDataManager
 
             catch (Exception ex)
             {
-                // Manejar el error si ocurre algún problema
+                // Manejar el error si ocurre algï¿½n problema
                 Console.WriteLine($"Error al seleccionar desde la tabla: {ex.Message}");
                 throw new Exception("Error al seleccionar desde la tabla");
             }
@@ -162,14 +162,22 @@ namespace StoreDataManager
                 using (FileStream stream = File.Open(tablePath, FileMode.Append)) // Se abre el archivo binario de la tabla en modo Append.
                 using (BinaryWriter writer = new BinaryWriter(stream)) // Se crea un BinaryWriter para escribir en el archivo.
                 {
+                    // AsegÃºrate de escribir el ID primero.
+                    if (rowData.ContainsKey("ID") && rowData["ID"] is int id)
+                    {
+                        writer.Write(id); // Escribe un entero de 4 bytes
+                    }
+                    else
+                    {
+                        return OperationStatus.Error; // Si no hay ID o no es entero, falla.
+                    }
+
                     // Escribe cada columna de la fila en el archivo.
                     foreach (var column in rowData)
                     {
-                        if (column.Value is int)
-                        {
-                            writer.Write((int)column.Value);
-                        }
-                        else if (column.Value is string)
+                        if (column.Key == "ID"); 
+
+                        if (column.Value is string)
                         {
                             string value = (string)column.Value;
 
@@ -182,7 +190,7 @@ namespace StoreDataManager
                                 value = value.PadRight(50); // Se asegura de que el string tenga 50 caracteres.
                             }
 
-                            writer.Write(value);
+                            writer.Write(value.ToCharArray()); // Escribe el string como un arreglo de caracteres.
                         }
                     }
                 }
@@ -197,38 +205,154 @@ namespace StoreDataManager
         }
 
 
-
-
         public OperationStatus CreateTable(string databaseName, string tableName, List<ColumnDefinition> columns)
         {
             var databasePath = $@"{DataPath}\{databaseName}";
             if (!Directory.Exists(databasePath))
             {
-                return OperationStatus.DatabaseNotFound;
+                return OperationStatus.DatabaseNotFound; // La base de datos no existe.
             }
 
             var tablePath = $@"{databasePath}\{tableName}.Table";
-            using (FileStream stream = File.Open(tablePath, FileMode.OpenOrCreate))
-            using (BinaryWriter writer = new BinaryWriter(stream))
+            
+            // Verificar si la tabla ya existe
+            if (File.Exists(tablePath))
             {
-                // Escribir el esquema de la tabla en el archivo
-                foreach (var column in columns)
+                Console.WriteLine($"La tabla {tableName} ya existe en la base de datos {databaseName}.");
+                return OperationStatus.TableAlreadyExists;
+            }
+
+            try
+            {
+                using (FileStream stream = File.Open(tablePath, FileMode.Create)) // Crear el archivo de la tabla solo si no existe.
+                using (BinaryWriter writer = new BinaryWriter(stream))
                 {
-                    writer.Write(column.Name);
-                    writer.Write(column.Type);
+                    // Escribir el esquema de la tabla en el archivo
+                    foreach (var column in columns)
+                    {
+                        writer.Write(column.Name);
+                        writer.Write(column.Type);
+                    }
+                }
+
+                // Actualiza el SystemCatalog
+                using (FileStream stream = File.Open(SystemTablesFile, FileMode.Append))
+                using (BinaryWriter writer = new BinaryWriter(stream))
+                {
+                    writer.Write(databaseName);
+                    writer.Write(tableName);
+                }
+
+                return OperationStatus.Success;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al crear la tabla: {ex.Message}");
+                return OperationStatus.Error;
+            }
+        }
+
+        public OperationStatus SelectFromTable(string databaseName, string tableName)
+        {
+            var tablePath = $@"{DataPath}\{databaseName}\{tableName}.Table";
+            if (!File.Exists(tablePath))
+            {
+                return OperationStatus.Error; // Tabla no existe.
+            }
+
+            try
+            {
+                using (FileStream stream = File.Open(tablePath, FileMode.Open))
+                using (BinaryReader reader = new BinaryReader(stream))
+                {
+                    while (stream.Position < stream.Length)
+                    {
+                        // Leer cada columna respetando el esquema
+                        int id = reader.ReadInt32(); // Leer un entero de 4 bytes para el ID
+
+                        // Leer el campo 'Nombre' (30 caracteres)
+                        char[] nombreChars = reader.ReadChars(30);
+                        string nombre = new string(nombreChars).Trim();
+
+                        // Leer el campo 'Apellidos' (50 caracteres)
+                        char[] apellidosChars = reader.ReadChars(50);
+                        string apellidos = new string(apellidosChars).Trim();
+
+                        // Mostrar los datos leÃ­dos
+                        Console.WriteLine($"ID: {id}, Nombre: {nombre}, Apellidos: {apellidos}");
+                    }
+
+                    return OperationStatus.Success;
                 }
             }
-
-            // Actualiza el SystemCatalog
-            using (FileStream stream = File.Open(SystemTablesFile, FileMode.Append))
-            using (BinaryWriter writer = new BinaryWriter(stream))
+            catch (Exception ex)
             {
-                writer.Write(databaseName);
-                writer.Write(tableName);
+                Console.WriteLine($"Error al leer la tabla: {ex.Message}");
+                return OperationStatus.Error;
+            }
+        }
+
+        public OperationStatus DeleteFromTable(string databaseName, string tableName, int idToDelete)
+        {
+            var tablePath = $@"{DataPath}\{databaseName}\{tableName}.Table";
+            
+            if (!File.Exists(tablePath))
+            {
+                return OperationStatus.Error; // Si la tabla no existe.
             }
 
-            return OperationStatus.Success;
+            try
+            {
+                string tempFilePath = tablePath + ".tmp"; // Archivo temporal donde se escribirÃ¡ el nuevo contenido.
+
+                using (FileStream inputStream = File.Open(tablePath, FileMode.Open)) // Abrimos el archivo original para leer.
+                using (BinaryReader reader = new BinaryReader(inputStream))
+                using (FileStream outputStream = File.Open(tempFilePath, FileMode.Create)) // Creamos el archivo temporal para escribir.
+                using (BinaryWriter writer = new BinaryWriter(outputStream))
+                {
+                    bool found = false;
+
+                    while (inputStream.Position < inputStream.Length)
+                    {
+                        int id = reader.ReadInt32();
+                        char[] nombreChars = reader.ReadChars(30); // Leer los 30 caracteres de 'Nombre'
+                        string nombre = new string(nombreChars).Trim();
+
+                        char[] apellidosChars = reader.ReadChars(50); // Leer los 50 caracteres de 'Apellidos'
+                        string apellidos = new string(apellidosChars).Trim();
+
+                        // Si el ID no coincide con el que queremos eliminar, lo escribimos en el archivo temporal.
+                        if (id != idToDelete)
+                        {
+                            writer.Write(id); // Escribir el entero ID
+                            writer.Write(nombre.PadRight(30)); // Escribir el nombre con 30 caracteres
+                            writer.Write(apellidos.PadRight(50)); // Escribir los apellidos con 50 caracteres
+                        }
+                        else
+                        {
+                            found = true; // Encontramos la fila que queremos eliminar.
+                        }
+                    }
+
+                    if (!found)
+                    {
+                        Console.WriteLine("El registro no fue encontrado.");
+                        return OperationStatus.Error; // No se encontrÃ³ el ID.
+                    }
+                }
+
+                // Reemplazar el archivo original con el archivo temporal.
+                File.Delete(tablePath);
+                File.Move(tempFilePath, tablePath);
+
+                return OperationStatus.Success;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al eliminar el registro: {ex.Message}");
+                return OperationStatus.Error;
+            }
         }
-        
+
     }
 }

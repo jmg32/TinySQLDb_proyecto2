@@ -6,7 +6,10 @@ using System.Threading.Tasks;
 
 namespace ApiInterface.Exceptions
 {
-    internal class UnknowRequestTypeException : Exception
+    public class UnknownRequestTypeException : Exception
     {
+        public UnknownRequestTypeException(string message) : base(message)
+        {
+        }
     }
 }

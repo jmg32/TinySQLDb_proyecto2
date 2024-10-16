@@ -6,7 +6,10 @@ using System.Threading.Tasks;
 
 namespace ApiInterface.Exceptions
 {
-    internal class InvalidRequestException : Exception
+    public class InvalidRequestException : Exception
     {
+        public InvalidRequestException(string message) : base(message)
+        {
+        }
     }
 }
